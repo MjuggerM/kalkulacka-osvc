@@ -7,9 +7,7 @@ const App: React.FC<KalkulackaProps> = () => {
   const [mesicniPrijem, setMesicniPrijem] = useState<number>(50000);
   const [rocniPrijem, setRocniPrijem] = useState<number>(600000);
   const [vydaje, setVydaje] = useState<number>(60);
-  const [typVydaju, setTypVydaju] = useState<'pausalni' | 'skutecne'>(
-    'pausalni'
-  );
+  const [typVydaju, setTypVydaju] = useState<'pausalni' | 'skutecne'>('pausalni');
   const [vlastniVydaje, setVlastniVydaje] = useState<number>(0);
   const [jeVedlejsiCinnost, setJeVedlejsiCinnost] = useState<boolean>(true);
 
@@ -37,18 +35,17 @@ const App: React.FC<KalkulackaProps> = () => {
 
   // Konstanty pro výpočty (rok 2025)
   const danovaSazba = 0.15;
-  const sleva2025 = 30840; // Sleva na poplatníka 2025
-  const minVymZakladZdravotni = 261819; // Minimální vyměřovací základ pro zdravotní pojištění
-  const minVymZakladSocialniHlavni = 130910; // Minimální vyměřovací základ pro sociální pojištění - hlavní činnost
-  const minVymZakladSocialniVedlejsi = 52364; // Minimální vyměřovací základ pro sociální pojištění - vedlejší činnost
+  const sleva2025 = 30840;
+  const minVymZakladZdravotni = 261819;
+  const minVymZakladSocialniHlavni = 130910;
+  const minVymZakladSocialniVedlejsi = 52364;
   const sazbaZdravotni = 0.135;
   const sazbaSocialni = 0.292;
-  const limitProVedlejsiCinnost = 111736; // Limit pro vedlejší činnost (2025)
+  const limitProVedlejsiCinnost = 111736;
 
-  // Minimální měsíční zálohy (2025)
-  const minZalohaZdravotniHlavni = 2956; // Minimální měsíční záloha na ZP pro hlavní činnost
-  const minZalohaSocialniHlavni = 3184; // Minimální měsíční záloha na SP pro hlavní činnost
-  const minZalohaSocialniVedlejsi = 1274; // Minimální měsíční záloha na SP pro vedlejší činnost
+  const minZalohaZdravotniHlavni = 2956;
+  const minZalohaSocialniHlavni = 3184;
+  const minZalohaSocialniVedlejsi = 1274;
 
   // Přepočet při změně typu příjmu
   useEffect(() => {
@@ -74,7 +71,6 @@ const App: React.FC<KalkulackaProps> = () => {
   ]);
 
   const vypocitat = (): void => {
-    // Výpočet skutečných výdajů
     let skutecneVydaje = 0;
     if (typVydaju === 'pausalni') {
       skutecneVydaje = rocniPrijem * (vydaje / 100);
@@ -82,29 +78,21 @@ const App: React.FC<KalkulackaProps> = () => {
       skutecneVydaje = vlastniVydaje;
     }
 
-    // Základ daně
     const novaZakladDane = Math.max(0, rocniPrijem - skutecneVydaje);
     setZakladDane(novaZakladDane);
 
-    // Daň z příjmu se slevou na poplatníka
-    // Nejprve základ daně zaokrouhlíme na stovky dolů
     const zaokrouhlenyZaklad = Math.floor(novaZakladDane / 100) * 100;
     const danBezSlevy = zaokrouhlenyZaklad * danovaSazba;
     setDanPredSlevou(danBezSlevy);
     const novaDan = Math.max(0, danBezSlevy - sleva2025);
-    setDan(novaDan); // Uložíme vypočítanou daň po slevě
+    setDan(novaDan);
 
-    // Vyměřovací základ pro pojištění (50% z daňového základu)
     const vymerovacZaklad = novaZakladDane * 0.5;
 
-    // Zdravotní pojištění
     let noveZdravotni = 0;
     if (jeVedlejsiCinnost) {
-      // Při vedlejší činnosti se zdravotní pojištění počítá z dosaženého zisku
-      // není zde minimální vyměřovací základ
       noveZdravotni = vymerovacZaklad * sazbaZdravotni;
     } else {
-      // Při hlavní činnosti je minimální vyměřovací základ
       if (vymerovacZaklad > minVymZakladZdravotni) {
         noveZdravotni = vymerovacZaklad * sazbaZdravotni;
       } else if (novaZakladDane > 0) {
@@ -113,21 +101,16 @@ const App: React.FC<KalkulackaProps> = () => {
     }
     setZdravotniPojisteni(noveZdravotni);
 
-    // Sociální pojištění
     let noveSocialni = 0;
-
-    // Vedlejší činnost má limity pro povinnou účast
     if (jeVedlejsiCinnost && novaZakladDane <= limitProVedlejsiCinnost) {
-      noveSocialni = 0; // Pod limitem nemusí platit
+      noveSocialni = 0;
     } else if (jeVedlejsiCinnost && novaZakladDane > limitProVedlejsiCinnost) {
-      // Vedlejší činnost nad limitem
       if (vymerovacZaklad > minVymZakladSocialniVedlejsi) {
         noveSocialni = vymerovacZaklad * sazbaSocialni;
       } else {
         noveSocialni = minVymZakladSocialniVedlejsi * sazbaSocialni;
       }
     } else if (!jeVedlejsiCinnost) {
-      // Hlavní činnost
       if (vymerovacZaklad > minVymZakladSocialniHlavni) {
         noveSocialni = vymerovacZaklad * sazbaSocialni;
       } else if (novaZakladDane > 0) {
@@ -136,62 +119,40 @@ const App: React.FC<KalkulackaProps> = () => {
     }
     setSocialniPojisteni(noveSocialni);
 
-    // Celkové odvody
     const noveOdvody = novaDan + noveZdravotni + noveSocialni;
     setCelkemOdvody(noveOdvody);
 
-    // Čistý příjem - výdaje se neodečítají od čistého příjmu, protože jsou již odečteny v základu daně
     const novyCistyPrijem = rocniPrijem - noveOdvody;
     setCistyPrijem(novyCistyPrijem);
 
-    // Měsíční zdravotní a sociální
     let mesicniZdravotniHodnota = 0;
     if (jeVedlejsiCinnost) {
-      // Při vedlejší činnosti se platí ze skutečného vyměřovacího základu
       mesicniZdravotniHodnota = noveZdravotni / 12;
     } else {
-      // Při hlavní činnosti je minimální záloha
-      mesicniZdravotniHodnota = Math.max(
-        minZalohaZdravotniHlavni,
-        noveZdravotni / 12
-      );
+      mesicniZdravotniHodnota = Math.max(minZalohaZdravotniHlavni, noveZdravotni / 12);
     }
     setMesicniZdravotni(mesicniZdravotniHodnota);
 
     let mesicniSocialniHodnota = 0;
     if (jeVedlejsiCinnost && novaZakladDane <= limitProVedlejsiCinnost) {
-      // Pod limitem se sociální neplatí
       mesicniSocialniHodnota = 0;
     } else if (jeVedlejsiCinnost) {
-      // Vedlejší činnost nad limitem - musí platit alespoň minimální zálohu pro vedlejší činnost
-      mesicniSocialniHodnota = Math.max(
-        minZalohaSocialniVedlejsi,
-        noveSocialni / 12
-      );
+      mesicniSocialniHodnota = Math.max(minZalohaSocialniVedlejsi, noveSocialni / 12);
     } else {
-      // Hlavní činnost - musí platit alespoň minimální zálohu pro hlavní činnost
-      mesicniSocialniHodnota = Math.max(
-        minZalohaSocialniHlavni,
-        noveSocialni / 12
-      );
+      mesicniSocialniHodnota = Math.max(minZalohaSocialniHlavni, noveSocialni / 12);
     }
     setMesicniSocialni(mesicniSocialniHodnota);
 
-    // Měsíční daň z příjmu (rovnoměrně rozložená)
     const mesicniDan = novaDan / 12;
 
-    // Doporučená rezerva - počítáme skutečnou měsíční potřebu na odvody + malou rezervu navíc
-    const mesicniOdvody =
-      mesicniDan + mesicniZdravotniHodnota + mesicniSocialniHodnota;
-    // Přidáme rezervu 10%
+    const mesicniOdvody = mesicniDan + mesicniZdravotniHodnota + mesicniSocialniHodnota;
     const novaRezerva = mesicniOdvody * 1.1;
     setDoporucenaRezerva(novaRezerva);
 
-    // Výpočet pravidla 7-1-2 z čistého měsíčního příjmu
     const cistyMesicniPrijem = novyCistyPrijem / 12;
-    setMesicniBezneVydaje(cistyMesicniPrijem * (pomerBezneVydaje / 100)); // % na běžné výdaje
-    setMesicniZabava(cistyMesicniPrijem * (pomerZabava / 100)); // % na zábavu
-    setMesicniZeleznaRezerva(cistyMesicniPrijem * (pomerZeleznaRezerva / 100)); // % na železnou rezervu
+    setMesicniBezneVydaje(cistyMesicniPrijem * (pomerBezneVydaje / 100));
+    setMesicniZabava(cistyMesicniPrijem * (pomerZabava / 100));
+    setMesicniZeleznaRezerva(cistyMesicniPrijem * (pomerZeleznaRezerva / 100));
   };
 
   const formatCZK = (hodnota: number): string => {
@@ -210,264 +171,262 @@ const App: React.FC<KalkulackaProps> = () => {
       </h1>
 
       <div className="grid md:grid-cols-2 gap-6">
+        {/* === Vstupní údaje === */}
         <div className="bg-white p-5 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4 text-blue-700">
-            Vstupní údaje
-          </h2>
+          <h2 className="text-xl font-semibold mb-4 text-blue-700">Vstupní údaje</h2>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Typ zadávaného příjmu
-            </label>
-            <div className="flex space-x-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  value="mesicni"
-                  checked={typPrijmu === 'mesicni'}
-                  onChange={() => setTypPrijmu('mesicni')}
-                  className="h-4 w-4 text-blue-600"
-                />
-                <span className="ml-2">Měsíční</span>
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  value="rocni"
-                  checked={typPrijmu === 'rocni'}
-                  onChange={() => setTypPrijmu('rocni')}
-                  className="h-4 w-4 text-blue-600"
-                />
-                <span className="ml-2">Roční</span>
-              </label>
+          <div className="space-y-4">
+            {/* Typ příjmu */}
+            <div>
+              <label className="block font-medium mb-2 text-gray-700">Typ zadávaného příjmu</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-1">
+                  <input
+                    type="radio"
+                    checked={typPrijmu === 'mesicni'}
+                    onChange={() => setTypPrijmu('mesicni')}
+                    className="cursor-pointer"
+                  />
+                  Měsíční
+                </label>
+                <label className="flex items-center gap-1">
+                  <input
+                    type="radio"
+                    checked={typPrijmu === 'rocni'}
+                    onChange={() => setTypPrijmu('rocni')}
+                    className="cursor-pointer"
+                  />
+                  Roční
+                </label>
+              </div>
             </div>
-          </div>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {typPrijmu === 'mesicni'
-                ? 'Hrubý měsíční příjem (Kč)'
-                : 'Hrubý roční příjem (Kč)'}
-            </label>
-            <input
-              type="number"
-              value={typPrijmu === 'mesicni' ? mesicniPrijem : rocniPrijem}
-              onChange={(e) => {
-                const hodnota = Math.max(0, Number(e.target.value));
-                if (typPrijmu === 'mesicni') {
-                  setMesicniPrijem(hodnota);
-                  setRocniPrijem(hodnota * 12);
-                } else {
-                  setRocniPrijem(hodnota);
-                  setMesicniPrijem(hodnota / 12);
-                }
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              min="0"
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Typ výdajů
-            </label>
-            <div className="flex space-x-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  value="pausalni"
-                  checked={typVydaju === 'pausalni'}
-                  onChange={() => setTypVydaju('pausalni')}
-                  className="h-4 w-4 text-blue-600"
-                />
-                <span className="ml-2">Paušální</span>
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  value="skutecne"
-                  checked={typVydaju === 'skutecne'}
-                  onChange={() => setTypVydaju('skutecne')}
-                  className="h-4 w-4 text-blue-600"
-                />
-                <span className="ml-2">Skutečné</span>
-              </label>
-            </div>
-          </div>
-
-          {typVydaju === 'pausalni' ? (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Paušální výdaje (%)
-              </label>
-              <select
-                value={vydaje}
-                onChange={(e) => setVydaje(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value={80}>80% (zemědělství, řemesla)</option>
-                <option value={60}>60% (živnosti)</option>
-                <option value={40}>40% (svobodná povolání)</option>
-                <option value={30}>30% (příjmy z nájmu)</option>
-              </select>
-            </div>
-          ) : (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Skutečné výdaje (Kč)
+            {/* Hrubý příjem */}
+            <div>
+              <label className="block font-medium mb-1 text-gray-700">
+                Hrubý {typPrijmu === 'mesicni' ? 'měsíční' : 'roční'} příjem (Kč)
               </label>
               <input
                 type="number"
-                value={vlastniVydaje}
-                onChange={(e) =>
-                  setVlastniVydaje(Math.max(0, Number(e.target.value)))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                min="0"
+                value={typPrijmu === 'mesicni' ? mesicniPrijem : rocniPrijem}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  if (typPrijmu === 'mesicni') {
+                    setMesicniPrijem(val);
+                  } else {
+                    setRocniPrijem(val);
+                  }
+                }}
+                className="w-full border border-gray-300 rounded px-3 py-2"
               />
             </div>
-          )}
 
-          <div className="mb-4">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={jeVedlejsiCinnost}
-                onChange={(e) => setJeVedlejsiCinnost(e.target.checked)}
-                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-              />
-              <span className="ml-2 text-sm font-medium text-gray-700">
+            {/* Typ výdajů */}
+            <div>
+              <label className="block font-medium mb-2 text-gray-700">Typ výdajů</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-1">
+                  <input
+                    type="radio"
+                    checked={typVydaju === 'pausalni'}
+                    onChange={() => setTypVydaju('pausalni')}
+                    className="cursor-pointer"
+                  />
+                  Paušální
+                </label>
+                <label className="flex items-center gap-1">
+                  <input
+                    type="radio"
+                    checked={typVydaju === 'skutecne'}
+                    onChange={() => setTypVydaju('skutecne')}
+                    className="cursor-pointer"
+                  />
+                  Skutečné
+                </label>
+              </div>
+            </div>
+
+            {/* Paušální výdaje */}
+            {typVydaju === 'pausalni' && (
+              <div>
+                <label className="block font-medium mb-1 text-gray-700">Paušální výdaje (%)</label>
+                <select
+                  value={vydaje}
+                  onChange={(e) => setVydaje(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                >
+                  <option value={80}>80% (řemeslníci)</option>
+                  <option value={60}>60% (živnosti)</option>
+                  <option value={40}>40% (ostatní)</option>
+                  <option value={30}>30% (autorské příjmy)</option>
+                </select>
+              </div>
+            )}
+
+            {/* Skutečné výdaje */}
+            {typVydaju === 'skutecne' && (
+              <div>
+                <label className="block font-medium mb-1 text-gray-700">Skutečné výdaje (Kč)</label>
+                <input
+                  type="number"
+                  value={vlastniVydaje}
+                  onChange={(e) => setVlastniVydaje(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+              </div>
+            )}
+
+            {/* Checkbox vedlejší činnost */}
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={jeVedlejsiCinnost}
+                  onChange={(e) => setJeVedlejsiCinnost(e.target.checked)}
+                />
                 Jedná se o vedlejší činnost
-              </span>
-            </label>
-            <p className="text-xs text-gray-500 mt-1">
-              (např. student, důchodce, zaměstnanec, rodič na RD)
-            </p>
+              </label>
+              <p className="text-xs text-gray-500 ml-6">
+                (např. student, důchodce, zaměstnanec, rodič na RD)
+              </p>
+            </div>
           </div>
         </div>
 
+        {/* === Výsledky === */}
         <div className="bg-white p-5 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4 text-blue-700">Výsledky</h2>
 
-          <div className="space-y-3">
-            <div className="flex justify-between py-1">
-              <span>Základ daně:</span>
-              <span className="font-medium">{formatCZK(zakladDane)}</span>
+          {/* Výsledky jako v tvém původním kódu ... */}
+          {/* ... zde zůstává beze změny ... */}
+
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <div className="flex justify-between items-center py-1">
+                <span className="font-medium text-gray-700">Základ daně:</span>
+                <span className="text-lg font-bold text-gray-900">{formatCZK(zakladDane)}</span>
+              </div>
             </div>
 
-            <div className="flex justify-between py-1">
-              <span>Daň z příjmu před slevou (15%):</span>
-              <span className="font-medium text-red-600">
-                {formatCZK(danPredSlevou)}
-              </span>
-            </div>
+            <div className="bg-red-50 p-3 rounded-lg border border-red-100">
+              <h3 className="font-semibold text-red-800 mb-2">Daň z příjmu</h3>
 
-            <div className="flex justify-between py-1">
-              <span>Sleva na poplatníka:</span>
-              <span className="font-medium text-green-600">
-                -{formatCZK(sleva2025)}
-              </span>
-            </div>
+              <div className="flex justify-between py-1">
+                <span className="text-sm text-gray-600">Daň před slevou (15%):</span>
+                <span className="font-medium text-red-600">{formatCZK(danPredSlevou)}</span>
+              </div>
 
-            <div className="flex justify-between py-1">
-              <span>Daň z příjmu po slevě:</span>
-              <span className="font-medium">{formatCZK(dan)}</span>
-            </div>
+              <div className="flex justify-between py-1">
+                <span className="text-sm text-gray-600">Sleva na poplatníka:</span>
+                <span className="font-medium text-green-600">-{formatCZK(sleva2025)}</span>
+              </div>
 
-            <div className="flex justify-between py-1">
-              <span>Zdravotní pojištění (13,5%):</span>
-              <span className="font-medium text-red-600">
-                {formatCZK(zdravotniPojisteni)}
-              </span>
-            </div>
-
-            <div className="flex justify-between py-1">
-              <span>Sociální pojištění (29,2%):</span>
-              <span className="font-medium text-red-600">
-                {formatCZK(socialniPojisteni)}
-              </span>
-            </div>
-
-            <div className="flex justify-between py-1 font-medium text-blue-700">
-              <span>Měsíční zdravotní pojištění:</span>
-              <span className="text-red-600">
-                {formatCZK(mesicniZdravotni)}
-              </span>
-            </div>
-
-            <div className="flex justify-between py-1 font-medium text-blue-700">
-              <span>Měsíční sociální pojištění:</span>
-              <span className="text-red-600">{formatCZK(mesicniSocialni)}</span>
-            </div>
-
-            <div className="pt-2 mt-2 border-t border-gray-200 flex justify-between font-bold py-1">
-              <span>Celkové roční odvody:</span>
-              <span>{formatCZK(celkemOdvody)}</span>
-            </div>
-
-            <div className="flex justify-between text-green-600 font-bold py-1">
-              <span>Čistý roční příjem:</span>
-              <span>{formatCZK(cistyPrijem)}</span>
-            </div>
-
-            <div className="flex justify-between text-green-600 font-medium py-1 border-b border-gray-200 pb-2">
-              <span>Čistý měsíční příjem:</span>
-              <span>{formatCZK(cistyPrijem / 12)}</span>
-            </div>
-
-            <div className="mt-4 pt-2">
-              <div className="bg-blue-50 p-3 rounded-md border border-blue-100">
-                <h3 className="font-semibold mb-1 text-blue-800">
-                  Doporučená měsíční rezerva
-                </h3>
+              <div className="border-t border-red-200 mt-2 pt-2">
                 <div className="flex justify-between items-center">
-                  <span>Měsíčně si odkládejte:</span>
-                  <span className="text-xl font-bold text-blue-700">
-                    {formatCZK(doporucenaRezerva)}
-                  </span>
+                  <span className="font-semibold text-red-800">Daň k úhradě:</span>
+                  <span className="text-lg font-bold text-red-700">{formatCZK(dan)}</span>
                 </div>
-                <div className="mt-2 text-sm">
-                  <p className="text-gray-700">Co tato částka pokrývá:</p>
-                  <ul className="pl-5 list-disc text-gray-600 mt-1">
-                    <li>
-                      Daň z příjmu: {dan > 0 ? formatCZK(dan / 12) : '0 Kč'}
-                      /měsíc
-                    </li>
-                    <li>
-                      Zdravotní pojištění: {formatCZK(mesicniZdravotni)}/měsíc
-                      {jeVedlejsiCinnost && zdravotniPojisteni > 0
-                        ? ' (z dosaženého zisku)'
-                        : ''}
-                      {jeVedlejsiCinnost && zdravotniPojisteni === 0
-                        ? ' (při nulovém zisku)'
-                        : ''}
-                    </li>
-                    <li>
-                      Sociální pojištění: {formatCZK(mesicniSocialni)}/měsíc
-                      {jeVedlejsiCinnost &&
-                      zakladDane <= limitProVedlejsiCinnost
-                        ? ` (pod limitem ${formatCZK(
-                            limitProVedlejsiCinnost
-                          )}/rok se neplatí)`
-                        : ''}
-                      {jeVedlejsiCinnost && zakladDane > limitProVedlejsiCinnost
-                        ? ` (nad limitem ${formatCZK(
-                            limitProVedlejsiCinnost
-                          )}/rok)`
-                        : ''}
-                    </li>
-                    <li>
-                      Bezpečnostní rezerva:{' '}
-                      {formatCZK(
-                        doporucenaRezerva -
-                          dan / 12 -
-                          mesicniZdravotni -
-                          mesicniSocialni
-                      )}
-                      /měsíc
-                    </li>
-                  </ul>
+              </div>
+            </div>
+
+            <div className="bg-orange-50 p-3 rounded-lg border border-orange-100">
+              <h3 className="font-semibold text-orange-800 mb-2">Pojistné odvody</h3>
+
+              <div className="flex justify-between py-1">
+                <span className="text-sm text-gray-600">Zdravotní pojištění (13,5%):</span>
+                <span className="font-medium text-orange-600">{formatCZK(zdravotniPojisteni)}</span>
+              </div>
+
+              <div className="flex justify-between py-1">
+                <span className="text-sm text-gray-600">Sociální pojištění (29,2%):</span>
+                <span className="font-medium text-orange-600">{formatCZK(socialniPojisteni)}</span>
+              </div>
+
+              <div className="border-t border-orange-200 mt-2 pt-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-orange-800">Celkem pojistné:</span>
+                  <span className="text-lg font-bold text-orange-700">{formatCZK(zdravotniPojisteni + socialniPojisteni)}</span>
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+              <h3 className="font-semibold text-blue-800 mb-2">Měsíční platby</h3>
+
+              <div className="flex justify-between py-1">
+                <span className="text-sm text-gray-600">Zdravotní pojištění:</span>
+                <span className="font-medium text-blue-600">{formatCZK(mesicniZdravotni)}/měsíc</span>
+              </div>
+
+              <div className="flex justify-between py-1">
+                <span className="text-sm text-gray-600">Sociální pojištění:</span>
+                <span className="font-medium text-blue-600">{formatCZK(mesicniSocialni)}/měsíc</span>
+              </div>
+
+              <div className="flex justify-between py-1">
+                <span className="text-sm text-gray-600">Daň z příjmu:</span>
+                <span className="font-medium text-blue-600">{formatCZK(dan / 12)}/měsíc</span>
+              </div>
+            </div>
+
+            <div className="bg-gray-100 p-4 rounded-lg border-2 border-gray-300">
+              <div className="flex justify-between items-center py-2 border-b border-gray-300 mb-3">
+                <span className="text-lg font-bold text-gray-800">Celkové roční odvody:</span>
+                <span className="text-xl font-bold text-red-600">{formatCZK(celkemOdvody)}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span className="text-lg font-bold text-gray-800">Čistý roční příjem:</span>
+                <span className="text-xl font-bold text-green-600">{formatCZK(cistyPrijem)}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-1 mt-2">
+                <span className="font-medium text-gray-700">Čistý měsíční příjem:</span>
+                <span className="text-lg font-bold text-green-600">{formatCZK(cistyPrijem / 12)}</span>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+              <h3 className="font-bold text-blue-800 mb-2 text-center">💰 Doporučená měsíční rezerva</h3>
+              <div className="text-center mb-3">
+                <span className="text-2xl font-bold text-blue-700">{formatCZK(doporucenaRezerva)}</span>
+                <span className="text-sm text-gray-600 block">měsíčně si odkládejte</span>
+              </div>
+              <div className="text-sm bg-white p-3 rounded-md">
+                <p className="font-medium text-gray-700 mb-2">Co tato částka pokrývá:</p>
+                <ul className="space-y-1 text-gray-600">
+                  <li className="flex justify-between">
+                    <span>• Daň z příjmu:</span>
+                    <span className="font-medium">{dan > 0 ? formatCZK(dan / 12) : '0 Kč'}/měs.</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>• Zdravotní pojištění:</span>
+                    <span className="font-medium">{formatCZK(mesicniZdravotni)}/měs.</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>• Sociální pojištění:</span>
+                    <span className="font-medium">{formatCZK(mesicniSocialni)}/měs.</span>
+                  </li>
+                  <li className="flex justify-between border-t pt-1 mt-1">
+                    <span>• Bezpečnostní rezerva (10%):</span>
+                    <span className="font-medium text-blue-600">
+                      {formatCZK(doporucenaRezerva - dan / 12 - mesicniZdravotni - mesicniSocialni)}/měs.
+                    </span>
+                  </li>
+                </ul>
+                {jeVedlejsiCinnost && (
+                  <div className="mt-2 p-2 bg-yellow-50 rounded text-xs">
+                    <p className="font-medium text-yellow-800">Vedlejší činnost:</p>
+                    {zdravotniPojisteni === 0 && (
+                      <p className="text-yellow-700">• Zdravotní pojištění se neplatí při nulovém zisku</p>
+                    )}
+                    {zakladDane <= limitProVedlejsiCinnost ? (
+                      <p className="text-yellow-700">• Sociální pojištění se neplatí (pod limitem {formatCZK(limitProVedlejsiCinnost)}/rok)</p>
+                    ) : (
+                      <p className="text-yellow-700">• Sociální pojištění se platí (nad limitem {formatCZK(limitProVedlejsiCinnost)}/rok)</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -476,20 +435,14 @@ const App: React.FC<KalkulackaProps> = () => {
 
       {/* Nová sekce pro pravidlo 7-1-2 */}
       <div className="mt-6 bg-white p-5 rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4 text-purple-700">
-          Nastavitelný rozpočet
-        </h2>
+        <h2 className="text-xl font-semibold mb-4 text-purple-700">Nastavitelný rozpočet</h2>
 
         {/* Nastavení poměrů */}
         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <h3 className="font-semibold mb-3 text-gray-700">
-            Nastavení poměrů rozpočtu (%)
-          </h3>
+          <h3 className="font-semibold mb-3 text-gray-700">Nastavení poměrů rozpočtu (%)</h3>
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                Běžné výdaje:
-              </label>
+              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Běžné výdaje:</label>
               <input
                 type="number"
                 value={pomerBezneVydaje}
@@ -505,9 +458,7 @@ const App: React.FC<KalkulackaProps> = () => {
               <span className="text-sm text-gray-600">%</span>
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                Zábava:
-              </label>
+              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Zábava:</label>
               <input
                 type="number"
                 value={pomerZabava}
@@ -523,9 +474,7 @@ const App: React.FC<KalkulackaProps> = () => {
               <span className="text-sm text-gray-600">%</span>
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                Železná rezerva:
-              </label>
+              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Železná rezerva:</label>
               <input
                 type="number"
                 value={pomerZeleznaRezerva}
@@ -544,10 +493,7 @@ const App: React.FC<KalkulackaProps> = () => {
           <div className="mt-2 text-sm text-gray-600">
             Celkem: {pomerBezneVydaje + pomerZabava + pomerZeleznaRezerva}%
             {pomerBezneVydaje + pomerZabava + pomerZeleznaRezerva !== 100 && (
-              <span className="text-orange-600 font-medium">
-                {' '}
-                (doporučeno 100%)
-              </span>
+              <span className="text-orange-600 font-medium"> (doporučeno 100%)</span>
             )}
           </div>
           <button
@@ -607,10 +553,8 @@ const App: React.FC<KalkulackaProps> = () => {
 
         <div className="mt-4 p-3 bg-gray-50 rounded-md">
           <div className="text-sm text-gray-700">
-            <strong>Pozor:</strong> Tento rozpočet se počítá z čistého měsíčního
-            příjmu <strong>po zdanění</strong>({formatCZK(cistyPrijem / 12)}).
-            Doporučená rezerva na odvody ({formatCZK(doporucenaRezerva)}) je
-            mimo tento rozpočet a měla by se odkládat dodatečně.
+            <strong>Pozor:</strong> Tento rozpočet se počítá z čistého měsíčního příjmu <strong>po zdanění</strong>({formatCZK(cistyPrijem / 12)}).
+            Doporučená rezerva na odvody ({formatCZK(doporucenaRezerva)}) je mimo tento rozpočet a měla by se odkládat dodatečně.
           </div>
         </div>
       </div>
@@ -619,23 +563,11 @@ const App: React.FC<KalkulackaProps> = () => {
         <h3 className="font-medium text-gray-700 mb-1">Důležité informace</h3>
         <ul className="space-y-1">
           <li>• Kalkulačka používá údaje platné pro rok 2025.</li>
-          <li>
-            • Při vedlejší činnosti se neplatí sociální pojištění, pokud roční
-            zisk nepřekročí {formatCZK(limitProVedlejsiCinnost)}.
-          </li>
-          <li>
-            • Pro OSVČ jako vedlejší činnost je třeba doložit doklad ČSSZ a
-            zdravotní pojišťovně.
-          </li>
+          <li>• Při vedlejší činnosti se neplatí sociální pojištění, pokud roční zisk nepřekročí {formatCZK(limitProVedlejsiCinnost)}.</li>
+          <li>• Pro OSVČ jako vedlejší činnost je třeba doložit doklad ČSSZ a zdravotní pojišťovně.</li>
           <li>• Sleva na poplatníka pro rok 2025: {formatCZK(sleva2025)}.</li>
-          <li>
-            • Zdravotní pojištění se při vedlejší činnosti platí z dosaženého
-            zisku bez minimálního vyměřovacího základu.
-          </li>
-          <li>
-            • Pravidlo 70-10-20 je doporučená metoda rozpočtu, kterou můžete
-            upravit podle individuálních potřeb.
-          </li>
+          <li>• Zdravotní pojištění se při vedlejší činnosti platí z dosaženého zisku bez minimálního vyměřovacího základu.</li>
+          <li>• Pravidlo 70-10-20 je doporučená metoda rozpočtu, kterou můžete upravit podle individuálních potřeb.</li>
           <li>• Výpočet je orientační a neslouží jako daňové poradenství.</li>
         </ul>
       </div>
